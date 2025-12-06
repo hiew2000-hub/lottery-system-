@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>保密远程抽签系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 30px auto;
+        }
+        
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #ff7676, #ffeaa7, #55efc4, #74b9ff,
+                #a29bfe, #fd79a8, #ffeaa7, #55efc4
+            );
+            transition: transform 3s cubic-bezier(0.2, 0.8, 0.3, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #wheel.spinning {
+            animation: spin 3s ease-out;
+        }
+        
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            z-index: 2;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #333;
+            border: 4px solid #667eea;
+        }
+        
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            z-index: 3;
+        }
+        
+        .pointer:before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #ff4757;
+        }
+        
+        #result {
+            margin: 30px 0;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #resultText {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2d3436;
+            margin: 20px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 30px;
+            text-align: left;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .remaining-count {
+            font-size: 16px;
+            color: #667eea;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .firework {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(720deg); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        #resultText {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 保密远程抽签系统</h1>
+        
+        <div class="wheel-container">
+            <div class="pointer"></div>
+            <div id="wheel" onclick="startSpin()">
+                <div class="wheel-center">点击抽签</div>
+            </div>
+        </div>
+        
+        <div class="remaining-count">
+            剩余名额：<span id="count">加载中...</span>
+        </div>
+        
+        <div id="result">
+            <div style="color: #888; margin-bottom: 10px;">
+                点击转盘开始抽签，结果将在这里显示
+            </div>
+            <div id="resultText"></div>
+        </div>
+        
+        <div>
+            <button onclick="startSpin()" id="spinBtn">开始抽签</button>
+            <button onclick="resetForNewUser()" id="newUserBtn">我是新抽签人</button>
+        </div>
+        
+        <div class="info-box">
+            <strong>🔐 保密说明：</strong>
+            <p>1. 每个人只能看到自己的抽签结果</p>
+            <p>2. 已抽中的名字会自动从池中移除</p>
+            <p>3. 转盘不显示任何名字，保护隐私</p>
+            <p>4. 抽签完成后请关闭页面</p>
+        </div>
+    </div>
+
+    <script>
+        // 使用 localStorage 模拟简单的后端存储
+        // 实际应用中应该使用真正的后端数据库
+        
+        // 初始化名字池 - 这里可以替换成你的名字列表
+        const defaultNames = [
+            "qiu", "jh", "stella", 
+            "sam", "peggie"
+ ];
+        
+        let names = [];
+        let hasDrawn = false;
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            initNames();
+            updateRemainingCount();
+        };
+        
+        function initNames() {
+            // 从 localStorage 获取当前名字池
+            const savedNames = localStorage.getItem('lotteryNames');
+            const drawnNames = JSON.parse(localStorage.getItem('drawnNames') || '[]');
+            
+            if (!savedNames) {
+                // 第一次使用，初始化所有名字
+                names = [...defaultNames];
+                localStorage.setItem('lotteryNames', JSON.stringify(names));
+                localStorage.setItem('drawnNames', JSON.stringify([]));
+            } else {
+                // 过滤掉已抽中的名字
+                const allNames = JSON.parse(savedNames);
+                names = allNames.filter(name => !drawnNames.includes(name));
+            }
+        }
+        
+        function updateRemainingCount() {
+            document.getElementById('count').textContent = names.length;
+        }
+        
+        function startSpin() {
+            if (hasDrawn) {
+                alert("您已经抽过签了！请让下一位抽签人操作。");
+                return;
+            }
+            
+            if (names.length === 0) {
+                document.getElementById('resultText').innerHTML = 
+                    '<span style="color:#ff4757;">所有名额已抽完！</span>';
+                return;
+            }
+            
+            const wheel = document.getElementById('wheel');
+            const resultText = document.getElementById('resultText');
+            const spinBtn = document.getElementById('spinBtn');
+            
+            // 禁用按钮
+            spinBtn.disabled = true;
+            spinBtn.textContent = '抽签中...';
+            
+            // 清空之前的结果
+            resultText.innerHTML = '';
+            
+            // 开始旋转动画
+            wheel.style.transform = 'rotate(720deg)';
+            wheel.style.transition = 'transform 3s cubic-bezier(0.2, 0.8, 0.3, 1)';
+            
+            // 3秒后显示结果
+            setTimeout(() => {
+                // 随机选择一个名字
+                const randomIndex = Math.floor(Math.random() * names.length);
+                const selectedName = names[randomIndex];
+                
+                // 显示结果
+                resultText.innerHTML = `
+                    <div style="color:#2d3436; font-size:24px; margin-bottom:10px;">
+                        恭喜您抽到：
+                    </div>
+                    <div style="font-size:48px; color:#ff4757; font-weight:bold;">
+                        ${selectedName}
+                    </div>
+                `;
+                
+                // 从池中移除这个名字
+                names.splice(randomIndex, 1);
+                
+                // 保存到已抽中列表
+                const drawnNames = JSON.parse(localStorage.getItem('drawnNames') || '[]');
+                drawnNames.push(selectedName);
+                localStorage.setItem('drawnNames', JSON.stringify(drawnNames));
+                
+                // 更新当前名字池
+                localStorage.setItem('lotteryNames', JSON.stringify(names));
+                
+                // 标记为已抽签
+                hasDrawn = true;
+                
+                // 创建庆祝效果
+                createFireworks();
+                
+                // 更新按钮状态
+                spinBtn.textContent = '已抽签';
+                spinBtn.style.background = '#cccccc';
+                
+                updateRemainingCount();
+            }, 3000);
+        }
+        
+        function resetForNewUser() {
+            // 清除当前用户的抽签状态
+            hasDrawn = false;
+            
+            // 重置按钮
+            const spinBtn = document.getElementById('spinBtn');
+            spinBtn.disabled = false;
+            spinBtn.textContent = '开始抽签';
+            spinBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            
+            // 清空结果显示
+            document.getElementById('resultText').innerHTML = '';
+            
+            // 重新初始化名字（检查是否有新名字加入）
+            initNames();
+            updateRemainingCount();
+            
+            // 重置转盘
+            const wheel = document.getElementById('wheel');
+            wheel.style.transform = 'rotate(0deg)';
+            wheel.style.transition = 'none';
+            
+            alert("已为新抽签人准备好！");
+        }
+        
+        function createFireworks() {
+            const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#ff6b81'];
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const firework = document.createElement('div');
+                    firework.className = 'firework';
+                    firework.style.left = Math.random() * 100 + 'vw';
+                    firework.style.top = Math.random() * 100 + 'vh';
+                    firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    firework.style.boxShadow = `0 0 20px ${colors[Math.floor(Math.random() * colors.length)]}`;
+                    
+                    document.body.appendChild(firework);
+                    
+                    // 烟花动画
+                    firework.animate([
+                        { opacity: 0, transform: 'scale(0)' },
+                        { opacity: 1, transform: 'scale(1)' },
+                        { opacity: 0, transform: 'scale(0)' }
+                    ], {
+                        duration: 1000,
+                        easing: 'ease-out'
+                    });
+                    
+                    // 移除元素
+                    setTimeout(() => firework.remove(), 1000);
+                }, i * 50);
+            }
+        }
+        
+        // 管理员功能 - 重置整个抽签系统（可以加密码保护）
+        function resetSystem() {
+            if (confirm("确定要重置整个抽签系统吗？这将清除所有抽签记录！")) {
+                localStorage.removeItem('lotteryNames');
+                localStorage.removeItem('drawnNames');
+                initNames();
+                updateRemainingCount();
+                alert("系统已重置！");
+                location.reload();
+            }
+        }
+        
+        // 添加键盘快捷键（Ctrl+Alt+R 重置系统）
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.altKey && e.key === 'r') {
+                const password = prompt("请输入管理员密码：");
+                // 这里可以设置密码，比如设为 "admin123"
+                if (password === "admin123") {
+                    resetSystem();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
